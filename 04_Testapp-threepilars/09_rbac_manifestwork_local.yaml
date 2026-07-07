@@ -1,0 +1,25 @@
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: testapp-argocd-rbac
+  namespace: local-cluster
+spec:
+  workload:
+    manifests:
+    - apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: testapp-threepilars-app
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: acm-argocd-admin
+        namespace: testapp-threepilars-app
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: admin
+      subjects:
+      - kind: ServiceAccount
+        name: acm-openshift-gitops-argocd-application-controller
+        namespace: openshift-gitops
