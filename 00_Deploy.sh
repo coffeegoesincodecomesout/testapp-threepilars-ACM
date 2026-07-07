@@ -49,7 +49,7 @@ wait_for_subscription() {
   log "Waiting for subscription '$name' in '$namespace' (timeout: ${timeout}s)..."
   while [ $elapsed -lt $timeout ]; do
     local csv phase
-    csv=$(oc get subscription "$name" -n "$namespace" \
+    csv=$(oc get subscription.operators.coreos.com "$name" -n "$namespace" \
           -o jsonpath='{.status.installedCSV}' 2>/dev/null || true)
     if [ -n "$csv" ]; then
       phase=$(oc get csv "$csv" -n "$namespace" \
@@ -131,24 +131,107 @@ oc_create -f 02_Operators/02_subscription_gitops-operator.yaml
 wait_for_subscription acm-operator-subscription  open-cluster-management        900
 wait_for_subscription openshift-gitops-operator  openshift-gitops-operator      600
 
+# ── Phase 3: Observability ────────────────────────────────────────────────────
+log "--- Phase 3: Observability ---"
+oc_create -f 03_Observability/01_namespace.yaml
+run_script "03_Observability/02_pullSecret.sh"
+
 # Create MultiClusterHub and wait for it to be ready
 log "--- Creating MultiClusterHub ---"
-oc_create -f 02_Operators/03_multiclusterhub.yaml
+oc_create -f 03_Observability/03_multiclusterhub.yaml
 wait_for_multiclusterhub multiclusterhub open-cluster-management 1200
 
 # Ensure observability CRD is available
 wait_for_crd multiclusterobservabilities.observability.open-cluster-management.io
 
-# ── Phase 3: Observability ────────────────────────────────────────────────────
-log "--- Phase 3: Observability ---"
-oc_create -f 03_Observability/01_namespace.yaml
-run_script "03_Observability/02_pullSecret.sh"
 oc_create -f 03_Observability/03_objectclaim.yaml
 run_script "03_Observability/04_bucketsecret.sh"
 oc_create -f 03_Observability/05_MultiClusterObservability.yaml
 
-# ── Phase 4: ACM Grafana Developer Instance ───────────────────────────────────
-log "--- Phase 4: Enable ACM Grafana Developer Instance ---"
+# ── Phase 4: Enable ApplicationSet in Any Namespace ───────────────────────────
+log "--- Phase 4: Enable ApplicationSet in Any Namespace ---"
+MULTICLOUD_REPO_DIR="${SCRIPT_DIR}/multicloud-integrations"
+
+# Clone the multicloud-integrations repo if not already present
+if [ ! -d "$MULTICLOUD_REPO_DIR" ]; then
+  log "Cloning multicloud-integrations repository..."
+  git clone https://github.com/stolostron/multicloud-integrations.git "$MULTICLOUD_REPO_DIR" \
+    || die "Failed to clone multicloud-integrations repository"
+else
+  log "Repository already exists at $MULTICLOUD_REPO_DIR (skipping clone)"
+fi
+
+# Run the ApplicationSet setup script
+log "Running setup-appset-any-namespace.sh..."
+cd "${MULTICLOUD_REPO_DIR}/deploy/appset-any-namespace"
+bash ./setup-appset-any-namespace.sh --namespace openshift-gitops --argocd-name openshift-gitops \
+  || die "Failed to enable ApplicationSet in any namespace"
+cd "$SCRIPT_DIR"
+
+# Create ManagedClusterSetBinding
+log "Creating ManagedClusterSetBinding..."
+oc_create -f 03_Observability/06_managedclustersetbinding.yaml
+
+# Create Placement for all OpenShift clusters
+log "Creating Placement for all OpenShift clusters..."
+oc_create -f 03_Observability/07_placement.yaml
+
+# Create GitOpsCluster to import ACM managed clusters into ArgoCD
+log "Creating GitOpsCluster..."
+oc_create -f 03_Observability/08_gitopscluster.yaml
+
+# Create Policy to enable Application resource in any namespace on managed clusters
+log "Creating ArgoCD policy for managed clusters..."
+oc_create -f 03_Observability/09_argocd_policy.yaml
+
+# Create PlacementBinding for ArgoCD policy
+log "Creating PlacementBinding for ArgoCD policy..."
+oc_create -f 03_Observability/09a_argocd_policy_placementbinding.yaml
+
+# Enable governance-policy-framework addon on managed clusters
+log "Enabling governance-policy-framework addon on managed clusters..."
+for cluster in $(oc get managedclusters -o jsonpath='{.items[*].metadata.name}'); do
+  log "  Enabling governance-policy-framework on cluster: $cluster"
+  cat <<EOF | oc_create -f - 2>&1 | grep -v "already exists" || true
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ManagedClusterAddOn
+metadata:
+  name: governance-policy-framework
+  namespace: $cluster
+spec:
+  installNamespace: open-cluster-management-agent-addon
+EOF
+done
+
+# Enable config-policy-controller addon on managed clusters
+log "Enabling config-policy-controller addon on managed clusters..."
+for cluster in $(oc get managedclusters -o jsonpath='{.items[*].metadata.name}'); do
+  log "  Enabling config-policy-controller on cluster: $cluster"
+  cat <<EOF | oc_create -f - 2>&1 | grep -v "already exists" || true
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ManagedClusterAddOn
+metadata:
+  name: config-policy-controller
+  namespace: $cluster
+spec:
+  installNamespace: open-cluster-management-agent-addon
+EOF
+done
+
+# Create example Placement that excludes local cluster
+log "Creating example Placement (excludes local cluster)..."
+oc_create -f 03_Observability/10_placement_example.yaml
+
+# Create appset-2 namespace for example ApplicationSet
+log "Creating appset-2 namespace..."
+oc_create -f 03_Observability/11_appset_namespace.yaml
+
+# Create example ApplicationSet (helloworld app)
+log "Creating example ApplicationSet (helloworld)..."
+oc_create -f 03_Observability/12_applicationset_example.yaml
+
+# ── Phase 5: ACM Grafana Developer Instance ───────────────────────────────────
+log "--- Phase 5: Enable ACM Grafana Developer Instance ---"
 GRAFANA_REPO_DIR="${SCRIPT_DIR}/multicluster-observability-operator"
 
 # Clone the multicluster-observability-operator repo if not already present
