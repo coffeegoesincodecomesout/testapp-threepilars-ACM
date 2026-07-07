@@ -147,4 +147,23 @@ oc_create -f 03_Observability/03_objectclaim.yaml
 run_script "03_Observability/04_bucketsecret.sh"
 oc_create -f 03_Observability/05_MultiClusterObservability.yaml
 
+# ── Phase 4: ACM Grafana Developer Instance ───────────────────────────────────
+log "--- Phase 4: Enable ACM Grafana Developer Instance ---"
+GRAFANA_REPO_DIR="${SCRIPT_DIR}/multicluster-observability-operator"
+
+# Clone the multicluster-observability-operator repo if not already present
+if [ ! -d "$GRAFANA_REPO_DIR" ]; then
+  log "Cloning multicluster-observability-operator repository..."
+  git clone https://github.com/open-cluster-management/multicluster-observability-operator.git "$GRAFANA_REPO_DIR" \
+    || die "Failed to clone multicluster-observability-operator repository"
+else
+  log "Repository already exists at $GRAFANA_REPO_DIR (skipping clone)"
+fi
+
+# Run the Grafana dev setup script
+log "Running setup-grafana-dev.sh..."
+cd "${GRAFANA_REPO_DIR}/tools"
+bash ./setup-grafana-dev.sh --deploy || die "Failed to deploy Grafana developer instance"
+cd "$SCRIPT_DIR"
+
 log "=== Deployment complete ==="

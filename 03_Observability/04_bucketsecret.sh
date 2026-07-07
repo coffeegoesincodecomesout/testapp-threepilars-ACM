@@ -24,16 +24,17 @@ echo "  OBC resources ready."
 
 BUCKET_HOST=$(oc get -n "$NAMESPACE" configmap "$CONFIGMAP" -o jsonpath='{.data.BUCKET_HOST}')
 BUCKET_NAME=$(oc get -n "$NAMESPACE" configmap "$CONFIGMAP" -o jsonpath='{.data.BUCKET_NAME}')
-BUCKET_PORT=$(oc get -n "$NAMESPACE" configmap "$CONFIGMAP" -o jsonpath='{.data.BUCKET_PORT}')
 ACCESS_KEY=$(oc get -n "$NAMESPACE" secret "$SECRET" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}'     | base64 -d)
 SECRET_KEY=$(oc get -n "$NAMESPACE" secret "$SECRET" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
 
+# Use HTTP (port 80) with insecure: true to avoid TLS certificate issues
+# The internal S3 service uses self-signed certs, and HTTP is acceptable for internal cluster traffic
 output=$(oc create secret generic thanos-object-storage -n "$NAMESPACE" \
   --from-literal=thanos.yaml="type: s3
 config:
   bucket: ${BUCKET_NAME}
-  endpoint: ${BUCKET_HOST}:${BUCKET_PORT}
-  insecure: false
+  endpoint: ${BUCKET_HOST}:80
+  insecure: true
   access_key: ${ACCESS_KEY}
   secret_key: ${SECRET_KEY}" 2>&1) || {
   if echo "$output" | grep -q "already exists"; then
