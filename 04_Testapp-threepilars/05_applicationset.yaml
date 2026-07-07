@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: testapp-threepilars
-  namespace: testapp-threepilars
+  namespace: openshift-gitops
 spec:
   generators:
   - clusterDecisionResource:
@@ -24,8 +24,8 @@ spec:
         server: https://kubernetes.default.svc
       project: default
       source:
-        path: 04_Testapp-threepilars
-        repoURL: https://github.com/nigsmith/testapp-threepilars-ACM.git
+        path: 04_Testapp-threepilars/app
+        repoURL: https://github.com/coffeegoesincodecomesout/testapp-threepilars-ACM.git
         targetRevision: main
       syncPolicy:
         automated: {}
