@@ -180,13 +180,9 @@ oc_create -f 03_Observability/07_placement.yaml
 log "Creating GitOpsCluster..."
 oc_create -f 03_Observability/08_gitopscluster.yaml
 
-# Create Policy to enable Application resource in any namespace on managed clusters
-log "Creating ArgoCD policy for managed clusters..."
-oc_create -f 03_Observability/09_argocd_policy.yaml
-
-# Create PlacementBinding for ArgoCD policy
-log "Creating PlacementBinding for ArgoCD policy..."
-oc_create -f 03_Observability/09a_argocd_policy_placementbinding.yaml
+# Create Policy and PlacementBinding to enable Application resource in any namespace on managed clusters
+log "Creating ArgoCD policy and PlacementBinding for managed clusters..."
+oc_create -f 03_Observability/09_argocd_policy_merged.yaml
 
 # Enable governance-policy-framework addon on managed clusters
 log "Enabling governance-policy-framework addon on managed clusters..."
