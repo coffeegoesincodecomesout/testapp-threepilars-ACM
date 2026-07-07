@@ -256,25 +256,19 @@ oc_create -f 03_Observability/14_appset2_managedclustersetbinding.yaml
 log "Creating RBAC for ApplicationSet controller in appset-2 namespace..."
 oc_create -f 03_Observability/15_appset2_rbac.yaml
 
-# Create example ApplicationSet (helloworld app)
-log "Creating example ApplicationSet (helloworld)..."
-oc_create -f 03_Observability/12_applicationset_example.yaml
+# NOTE: Helloworld ApplicationSet is now created in openshift-gitops namespace (Phase 5)
+# to work properly with ACM pull model
 
-# Wait for ApplicationSet to generate applications
-log "Waiting for ApplicationSet to generate applications..."
-sleep 10
-APP_COUNT=$(oc get application.argoproj.io -n appset-2 --no-headers 2>/dev/null | wc -l)
-log "  ApplicationSet generated $APP_COUNT application(s)"
+# ── Phase 5: Testapp-threepilars and Helloworld ApplicationSets ──────────────
+log "--- Phase 5: Deploy ApplicationSets ---"
 
-# ── Phase 5: Testapp-threepilars ApplicationSet ───────────────────────────────
-log "--- Phase 5: Deploy Testapp-threepilars ApplicationSet ---"
-
-# Create testapp-threepilars namespace
+# Create testapp-threepilars namespace (for ManagedClusterSetBinding)
 log "Creating testapp-threepilars namespace..."
 oc_create -f 04_Testapp-threepilars/01_namespace.yaml
 
-# Create Placement for testapp
-log "Creating Placement for testapp..."
+# Create Placement for testapp in openshift-gitops namespace
+# (ApplicationSet controller searches for PlacementDecisions in openshift-gitops)
+log "Creating Placement for testapp in openshift-gitops..."
 oc_create -f 04_Testapp-threepilars/02_placement.yaml
 
 # Create ManagedClusterSetBinding in testapp-threepilars namespace
@@ -285,15 +279,35 @@ oc_create -f 04_Testapp-threepilars/03_managedclustersetbinding.yaml
 log "Creating RBAC for ApplicationSet controller in testapp-threepilars namespace..."
 oc_create -f 04_Testapp-threepilars/04_rbac.yaml
 
-# Create testapp-threepilars ApplicationSet
-log "Creating testapp-threepilars ApplicationSet..."
+# Patch ApplicationSet controller ClusterRole
+log "Patching ApplicationSet controller ClusterRole..."
+oc apply -f 04_Testapp-threepilars/06_clusterrole_patch.yaml
+
+# Create testapp-threepilars ApplicationSet in openshift-gitops namespace
+log "Creating testapp-threepilars ApplicationSet in openshift-gitops..."
 oc_create -f 04_Testapp-threepilars/05_applicationset.yaml
 
-# Wait for ApplicationSet to generate applications
-log "Waiting for testapp-threepilars ApplicationSet to generate applications..."
-sleep 10
-APP_COUNT=$(oc get application.argoproj.io -n testapp-threepilars --no-headers 2>/dev/null | wc -l)
-log "  testapp-threepilars ApplicationSet generated $APP_COUNT application(s)"
+# Create helloworld ApplicationSet in openshift-gitops namespace (moved from appset-2)
+log "Creating helloworld ApplicationSet in openshift-gitops..."
+oc_create -f 03_Observability/12_applicationset_example.yaml
+
+# Create RBAC ManifestWorks for testapp on managed clusters
+log "Creating RBAC ManifestWorks for testapp..."
+oc apply -f 04_Testapp-threepilars/08_rbac_manifestwork.yaml
+oc apply -f 04_Testapp-threepilars/09_rbac_manifestwork_local.yaml
+
+# Create RBAC ManifestWorks for helloworld on managed clusters
+log "Creating RBAC ManifestWorks for helloworld..."
+oc apply -f 03_Observability/16_helloworld_rbac_manifestwork.yaml
+oc apply -f 03_Observability/17_helloworld_rbac_manifestwork_local.yaml
+
+# Wait for ApplicationSets to generate applications
+log "Waiting for ApplicationSets to generate applications..."
+sleep 15
+TESTAPP_COUNT=$(oc get application.argoproj.io -n openshift-gitops --no-headers 2>/dev/null | grep testapp | wc -l)
+HELLOWORLD_COUNT=$(oc get application.argoproj.io -n openshift-gitops --no-headers 2>/dev/null | grep helloworld | wc -l)
+log "  testapp-threepilars ApplicationSet generated $TESTAPP_COUNT application(s)"
+log "  helloworld ApplicationSet generated $HELLOWORLD_COUNT application(s)"
 
 # ── Phase 6: ACM Grafana Developer Instance ───────────────────────────────────
 log "--- Phase 6: Enable ACM Grafana Developer Instance ---"
