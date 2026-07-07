@@ -168,6 +168,28 @@ bash ./setup-appset-any-namespace.sh --namespace openshift-gitops --argocd-name 
   || die "Failed to enable ApplicationSet in any namespace"
 cd "$SCRIPT_DIR"
 
+# Configure ArgoCD to watch all namespaces and disable OpenShift OAuth (to avoid dex restart loop)
+log "Configuring ArgoCD for multi-namespace support..."
+oc patch argocd openshift-gitops -n openshift-gitops --type=merge -p '{"spec":{"sourceNamespaces":["*"],"sso":{"provider":"dex","dex":{"openShiftOAuth":false}}}}' \
+  || log "  Warning: Failed to patch ArgoCD (may already be configured)"
+
+# Increase ArgoCD server memory limits
+log "Increasing ArgoCD server memory limits..."
+oc patch argocd openshift-gitops -n openshift-gitops --type=merge -p '{"spec":{"server":{"resources":{"limits":{"memory":"2Gi"},"requests":{"memory":"512Mi"}}}}}' \
+  || log "  Warning: Failed to patch ArgoCD server resources"
+
+# Configure ApplicationSet controller to watch all namespaces
+log "Configuring ApplicationSet controller for multi-namespace support..."
+oc set env deployment/openshift-gitops-applicationset-controller -n openshift-gitops \
+  ARGOCD_APPLICATIONSET_CONTROLLER_NAMESPACES='*' \
+  ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_SCM_PROVIDERS=false \
+  || log "  Warning: Failed to set ApplicationSet controller environment variables"
+
+# Wait for ArgoCD components to be ready
+log "Waiting for ArgoCD components to be ready..."
+oc wait --for=condition=Ready pod -l app.kubernetes.io/name=openshift-gitops-server -n openshift-gitops --timeout=300s || log "  Warning: Timeout waiting for ArgoCD server"
+oc wait --for=condition=Ready pod -l app.kubernetes.io/name=openshift-gitops-applicationset-controller -n openshift-gitops --timeout=120s || log "  Warning: Timeout waiting for ApplicationSet controller"
+
 # Create ManagedClusterSetBinding
 log "Creating ManagedClusterSetBinding..."
 oc_create -f 03_Observability/06_managedclustersetbinding.yaml
@@ -222,12 +244,59 @@ oc_create -f 03_Observability/10_placement_example.yaml
 log "Creating appset-2 namespace..."
 oc_create -f 03_Observability/11_appset_namespace.yaml
 
+# Create Placement in appset-2 namespace
+log "Creating Placement in appset-2 namespace..."
+oc_create -f 03_Observability/13_appset2_placement.yaml
+
+# Create ManagedClusterSetBinding in appset-2 namespace
+log "Creating ManagedClusterSetBinding in appset-2 namespace..."
+oc_create -f 03_Observability/14_appset2_managedclustersetbinding.yaml
+
+# Create RBAC for ApplicationSet controller in appset-2 namespace
+log "Creating RBAC for ApplicationSet controller in appset-2 namespace..."
+oc_create -f 03_Observability/15_appset2_rbac.yaml
+
 # Create example ApplicationSet (helloworld app)
 log "Creating example ApplicationSet (helloworld)..."
 oc_create -f 03_Observability/12_applicationset_example.yaml
 
-# ── Phase 5: ACM Grafana Developer Instance ───────────────────────────────────
-log "--- Phase 5: Enable ACM Grafana Developer Instance ---"
+# Wait for ApplicationSet to generate applications
+log "Waiting for ApplicationSet to generate applications..."
+sleep 10
+APP_COUNT=$(oc get application.argoproj.io -n appset-2 --no-headers 2>/dev/null | wc -l)
+log "  ApplicationSet generated $APP_COUNT application(s)"
+
+# ── Phase 5: Testapp-threepilars ApplicationSet ───────────────────────────────
+log "--- Phase 5: Deploy Testapp-threepilars ApplicationSet ---"
+
+# Create testapp-threepilars namespace
+log "Creating testapp-threepilars namespace..."
+oc_create -f 04_Testapp-threepilars/01_namespace.yaml
+
+# Create Placement for testapp
+log "Creating Placement for testapp..."
+oc_create -f 04_Testapp-threepilars/02_placement.yaml
+
+# Create ManagedClusterSetBinding in testapp-threepilars namespace
+log "Creating ManagedClusterSetBinding in testapp-threepilars namespace..."
+oc_create -f 04_Testapp-threepilars/03_managedclustersetbinding.yaml
+
+# Create RBAC for ApplicationSet controller in testapp-threepilars namespace
+log "Creating RBAC for ApplicationSet controller in testapp-threepilars namespace..."
+oc_create -f 04_Testapp-threepilars/04_rbac.yaml
+
+# Create testapp-threepilars ApplicationSet
+log "Creating testapp-threepilars ApplicationSet..."
+oc_create -f 04_Testapp-threepilars/05_applicationset.yaml
+
+# Wait for ApplicationSet to generate applications
+log "Waiting for testapp-threepilars ApplicationSet to generate applications..."
+sleep 10
+APP_COUNT=$(oc get application.argoproj.io -n testapp-threepilars --no-headers 2>/dev/null | wc -l)
+log "  testapp-threepilars ApplicationSet generated $APP_COUNT application(s)"
+
+# ── Phase 6: ACM Grafana Developer Instance ───────────────────────────────────
+log "--- Phase 6: Enable ACM Grafana Developer Instance ---"
 GRAFANA_REPO_DIR="${SCRIPT_DIR}/multicluster-observability-operator"
 
 # Clone the multicluster-observability-operator repo if not already present

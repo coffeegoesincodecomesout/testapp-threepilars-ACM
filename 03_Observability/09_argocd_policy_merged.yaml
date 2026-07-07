@@ -34,6 +34,8 @@ spec:
                   value: '*'
               server:
                 enabled: false
+              sourceNamespaces:
+              - '*'
         - complianceType: musthave
           objectDefinition:
             apiVersion: argoproj.io/v1alpha1
