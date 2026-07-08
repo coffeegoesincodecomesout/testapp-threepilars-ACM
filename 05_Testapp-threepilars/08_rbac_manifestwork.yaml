@@ -2,7 +2,7 @@ apiVersion: work.open-cluster-management.io/v1
 kind: ManifestWork
 metadata:
   name: testapp-argocd-rbac
-  namespace: dev02
+  namespace: dev01
 spec:
   workload:
     manifests:
