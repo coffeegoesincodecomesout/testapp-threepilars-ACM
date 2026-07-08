@@ -11,7 +11,7 @@ spec:
     rules:
     - alert: TestappConnectionCount
       for: 1m
-      expr: ping_request_count{job="testapp-threepilars-app/testapp-threepilars"} > 0
+      expr: ping_request_count{job="testapp-threepilars"} > 0
       labels:
         severity: warning
       annotations:

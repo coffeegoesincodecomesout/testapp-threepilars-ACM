@@ -16,7 +16,7 @@ spec:
       metadata:
         name: enable-user-workload-monitoring-config
       spec:
-        remediationAction: enforce
+        remediationAction: inform
         severity: medium
         object-templates:
         - complianceType: musthave

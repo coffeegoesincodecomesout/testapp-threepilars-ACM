@@ -4,6 +4,6 @@ metadata:
   name: observability-metrics-custom-allowlist
   namespace: open-cluster-management-observability
 data:
-  metrics_list.yaml: |
+  uwl_metrics_list.yaml: |
     names:
       - ping_request_count

@@ -133,14 +133,13 @@ oc_create -f 05_Testapp-threepilars/04_rbac.yaml
 log "Patching ApplicationSet controller ClusterRole..."
 oc apply -f 05_Testapp-threepilars/06_clusterrole_patch.yaml
 
+# Create testapp RBAC Policy for managed clusters
+log "Creating testapp RBAC Policy for managed clusters..."
+oc_create -f 05_Testapp-threepilars/07_testapp_rbac_policy.yaml
+
 # Create testapp-threepilars ApplicationSet in openshift-gitops namespace
 log "Creating testapp-threepilars ApplicationSet in openshift-gitops..."
 oc_create -f 05_Testapp-threepilars/05_applicationset.yaml
-
-# Create RBAC ManifestWorks for testapp on managed clusters
-log "Creating RBAC ManifestWorks for testapp..."
-oc apply -f 05_Testapp-threepilars/08_rbac_manifestwork.yaml
-oc apply -f 05_Testapp-threepilars/09_rbac_manifestwork_local.yaml
 
 # Wait for ApplicationSet to generate applications
 log "Waiting for ApplicationSet to generate applications..."
