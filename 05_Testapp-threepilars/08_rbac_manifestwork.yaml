@@ -23,3 +23,30 @@ spec:
       - kind: ServiceAccount
         name: acm-openshift-gitops-argocd-application-controller
         namespace: openshift-gitops
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: argocd-monitoring-admin
+        namespace: testapp-threepilars-app
+      rules:
+      - apiGroups:
+        - monitoring.coreos.com
+        resources:
+        - servicemonitors
+        - prometheusrules
+        - podmonitors
+        verbs:
+        - '*'
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: argocd-monitoring-admin
+        namespace: testapp-threepilars-app
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: argocd-monitoring-admin
+      subjects:
+      - kind: ServiceAccount
+        name: acm-openshift-gitops-argocd-application-controller
+        namespace: openshift-gitops
