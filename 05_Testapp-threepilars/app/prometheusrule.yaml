@@ -5,6 +5,7 @@ metadata:
   namespace: testapp-threepilars-app
   labels:
     app: testapp-threepilars
+    openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
 spec:
   groups:
   - name: testapp-threepilars-alerts
