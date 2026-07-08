@@ -71,3 +71,17 @@ spec:
             - kind: ServiceAccount
               name: acm-openshift-gitops-argocd-application-controller
               namespace: openshift-gitops
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: testapp-rbac-policy-binding
+  namespace: openshift-gitops
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: testapp-clusters
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: testapp-rbac-policy
