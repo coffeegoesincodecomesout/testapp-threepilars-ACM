@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: testapp-threepilars-alerts
+  namespace: testapp-threepilars-app
+  labels:
+    app: testapp-threepilars
+spec:
+  groups:
+  - name: testapp-threepilars-alerts
+    rules:
+    - alert: TestappConnectionCount
+      for: 1m
+      expr: ping_request_count{job="testapp-threepilars-app/testapp-threepilars"} > 0
+      labels:
+        severity: warning
+      annotations:
+        summary: "Testapp connection count exceeded threshold"
+        description: "The testapp-threepilars application has {{ $value }} ping requests on cluster {{ $externalLabels.cluster }}"

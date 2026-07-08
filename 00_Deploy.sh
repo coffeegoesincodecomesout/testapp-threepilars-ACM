@@ -148,6 +148,10 @@ oc_create -f 03_Observability/03_objectclaim.yaml
 run_script "03_Observability/04_bucketsecret.sh"
 oc_create -f 03_Observability/05_MultiClusterObservability.yaml
 
+# Create custom metrics allowlist for observability
+log "Creating custom metrics allowlist..."
+oc_create -f 03_Observability/06_custom_metrics_allowlist.yaml
+
 # ── Phase 4: Enable ApplicationSet in Any Namespace ───────────────────────────
 log "--- Phase 4: Enable ApplicationSet in Any Namespace ---"
 MULTICLOUD_REPO_DIR="${SCRIPT_DIR}/multicloud-integrations"
@@ -168,16 +172,6 @@ bash ./setup-appset-any-namespace.sh --namespace openshift-gitops --argocd-name 
   || die "Failed to enable ApplicationSet in any namespace"
 cd "$SCRIPT_DIR"
 
-# Configure ArgoCD to watch all namespaces and disable OpenShift OAuth (to avoid dex restart loop)
-log "Configuring ArgoCD for multi-namespace support..."
-oc patch argocd openshift-gitops -n openshift-gitops --type=merge -p '{"spec":{"sourceNamespaces":["*"],"sso":{"provider":"dex","dex":{"openShiftOAuth":false}}}}' \
-  || log "  Warning: Failed to patch ArgoCD (may already be configured)"
-
-# Increase ArgoCD server memory limits
-log "Increasing ArgoCD server memory limits..."
-oc patch argocd openshift-gitops -n openshift-gitops --type=merge -p '{"spec":{"server":{"resources":{"limits":{"memory":"2Gi"},"requests":{"memory":"512Mi"}}}}}' \
-  || log "  Warning: Failed to patch ArgoCD server resources"
-
 # Configure ApplicationSet controller to watch all namespaces
 log "Configuring ApplicationSet controller for multi-namespace support..."
 oc set env deployment/openshift-gitops-applicationset-controller -n openshift-gitops \
@@ -192,19 +186,19 @@ oc wait --for=condition=Ready pod -l app.kubernetes.io/name=openshift-gitops-app
 
 # Create ManagedClusterSetBinding
 log "Creating ManagedClusterSetBinding..."
-oc_create -f 03_Observability/06_managedclustersetbinding.yaml
+oc_create -f 04_ApplicationSet_Setup/01_managedclustersetbinding.yaml
 
 # Create Placement for all OpenShift clusters
 log "Creating Placement for all OpenShift clusters..."
-oc_create -f 03_Observability/07_placement.yaml
+oc_create -f 04_ApplicationSet_Setup/02_placement.yaml
 
 # Create GitOpsCluster to import ACM managed clusters into ArgoCD
 log "Creating GitOpsCluster..."
-oc_create -f 03_Observability/08_gitopscluster.yaml
+oc_create -f 04_ApplicationSet_Setup/03_gitopscluster.yaml
 
 # Create Policy and PlacementBinding to enable Application resource in any namespace on managed clusters
 log "Creating ArgoCD policy and PlacementBinding for managed clusters..."
-oc_create -f 03_Observability/09_argocd_policy_merged.yaml
+oc_create -f 04_ApplicationSet_Setup/04_argocd_policy.yaml
 
 # Enable governance-policy-framework addon on managed clusters
 log "Enabling governance-policy-framework addon on managed clusters..."
@@ -236,78 +230,44 @@ spec:
 EOF
 done
 
-# Create example Placement that excludes local cluster
-log "Creating example Placement (excludes local cluster)..."
-oc_create -f 03_Observability/10_placement_example.yaml
-
-# Create appset-2 namespace for example ApplicationSet
-log "Creating appset-2 namespace..."
-oc_create -f 03_Observability/11_appset_namespace.yaml
-
-# Create Placement in appset-2 namespace
-log "Creating Placement in appset-2 namespace..."
-oc_create -f 03_Observability/13_appset2_placement.yaml
-
-# Create ManagedClusterSetBinding in appset-2 namespace
-log "Creating ManagedClusterSetBinding in appset-2 namespace..."
-oc_create -f 03_Observability/14_appset2_managedclustersetbinding.yaml
-
-# Create RBAC for ApplicationSet controller in appset-2 namespace
-log "Creating RBAC for ApplicationSet controller in appset-2 namespace..."
-oc_create -f 03_Observability/15_appset2_rbac.yaml
-
-# NOTE: Helloworld ApplicationSet is now created in openshift-gitops namespace (Phase 5)
-# to work properly with ACM pull model
-
-# ── Phase 5: Testapp-threepilars and Helloworld ApplicationSets ──────────────
-log "--- Phase 5: Deploy ApplicationSets ---"
+# ── Phase 5: Testapp-threepilars ApplicationSet ──────────────────────────────
+log "--- Phase 5: Deploy Testapp ApplicationSet ---"
 
 # Create testapp-threepilars namespace (for ManagedClusterSetBinding)
 log "Creating testapp-threepilars namespace..."
-oc_create -f 04_Testapp-threepilars/01_namespace.yaml
+oc_create -f 05_Testapp-threepilars/01_namespace.yaml
 
 # Create Placement for testapp in openshift-gitops namespace
 # (ApplicationSet controller searches for PlacementDecisions in openshift-gitops)
 log "Creating Placement for testapp in openshift-gitops..."
-oc_create -f 04_Testapp-threepilars/02_placement.yaml
+oc_create -f 05_Testapp-threepilars/02_placement.yaml
 
 # Create ManagedClusterSetBinding in testapp-threepilars namespace
 log "Creating ManagedClusterSetBinding in testapp-threepilars namespace..."
-oc_create -f 04_Testapp-threepilars/03_managedclustersetbinding.yaml
+oc_create -f 05_Testapp-threepilars/03_managedclustersetbinding.yaml
 
 # Create RBAC for ApplicationSet controller in testapp-threepilars namespace
 log "Creating RBAC for ApplicationSet controller in testapp-threepilars namespace..."
-oc_create -f 04_Testapp-threepilars/04_rbac.yaml
+oc_create -f 05_Testapp-threepilars/04_rbac.yaml
 
 # Patch ApplicationSet controller ClusterRole
 log "Patching ApplicationSet controller ClusterRole..."
-oc apply -f 04_Testapp-threepilars/06_clusterrole_patch.yaml
+oc apply -f 05_Testapp-threepilars/06_clusterrole_patch.yaml
 
 # Create testapp-threepilars ApplicationSet in openshift-gitops namespace
 log "Creating testapp-threepilars ApplicationSet in openshift-gitops..."
-oc_create -f 04_Testapp-threepilars/05_applicationset.yaml
-
-# Create helloworld ApplicationSet in openshift-gitops namespace (moved from appset-2)
-log "Creating helloworld ApplicationSet in openshift-gitops..."
-oc_create -f 03_Observability/12_applicationset_example.yaml
+oc_create -f 05_Testapp-threepilars/05_applicationset.yaml
 
 # Create RBAC ManifestWorks for testapp on managed clusters
 log "Creating RBAC ManifestWorks for testapp..."
-oc apply -f 04_Testapp-threepilars/08_rbac_manifestwork.yaml
-oc apply -f 04_Testapp-threepilars/09_rbac_manifestwork_local.yaml
+oc apply -f 05_Testapp-threepilars/08_rbac_manifestwork.yaml
+oc apply -f 05_Testapp-threepilars/09_rbac_manifestwork_local.yaml
 
-# Create RBAC ManifestWorks for helloworld on managed clusters
-log "Creating RBAC ManifestWorks for helloworld..."
-oc apply -f 03_Observability/16_helloworld_rbac_manifestwork.yaml
-oc apply -f 03_Observability/17_helloworld_rbac_manifestwork_local.yaml
-
-# Wait for ApplicationSets to generate applications
-log "Waiting for ApplicationSets to generate applications..."
+# Wait for ApplicationSet to generate applications
+log "Waiting for ApplicationSet to generate applications..."
 sleep 15
 TESTAPP_COUNT=$(oc get application.argoproj.io -n openshift-gitops --no-headers 2>/dev/null | grep testapp | wc -l)
-HELLOWORLD_COUNT=$(oc get application.argoproj.io -n openshift-gitops --no-headers 2>/dev/null | grep helloworld | wc -l)
 log "  testapp-threepilars ApplicationSet generated $TESTAPP_COUNT application(s)"
-log "  helloworld ApplicationSet generated $HELLOWORLD_COUNT application(s)"
 
 # ── Phase 6: ACM Grafana Developer Instance ───────────────────────────────────
 log "--- Phase 6: Enable ACM Grafana Developer Instance ---"

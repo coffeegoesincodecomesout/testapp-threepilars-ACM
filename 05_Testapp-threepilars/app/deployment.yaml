@@ -18,6 +18,9 @@ spec:
         image: quay.io/rhn_support_nigsmith/testapp-threepilars:latest
         ports:
         - containerPort: 8080
+          name: http
+        - containerPort: 8090
+          name: metrics
         resources:
           requests:
             memory: "128Mi"
@@ -43,8 +46,8 @@ spec:
     targetPort: 8080
   - name: metrics
     protocol: TCP
-    port: 8081
-    targetPort: 8081
+    port: 8090
+    targetPort: 8090
   type: ClusterIP
 ---
 apiVersion: monitoring.coreos.com/v1
@@ -54,6 +57,8 @@ metadata:
   namespace: testapp-threepilars-app
   labels:
     app: testapp-threepilars
+  annotations:
+    operator.prometheus.io/controller-id: openshift-user-workload-monitoring/prometheus-operator
 spec:
   selector:
     matchLabels:
