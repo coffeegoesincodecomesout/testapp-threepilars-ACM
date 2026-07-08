@@ -1,3 +1,19 @@
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: managed-clusters-only
+  namespace: openshift-gitops
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values: [OpenShift]
+        - key: local-cluster
+          operator: DoesNotExist
+---
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
@@ -16,7 +32,7 @@ spec:
       metadata:
         name: enable-user-workload-monitoring-config
       spec:
-        remediationAction: inform
+        remediationAction: enforce
         severity: medium
         object-templates:
         - complianceType: musthave
@@ -38,7 +54,7 @@ metadata:
 placementRef:
   apiGroup: cluster.open-cluster-management.io
   kind: Placement
-  name: all-openshift-clusters
+  name: managed-clusters-only
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
