@@ -109,6 +109,10 @@ spec:
 EOF
 done
 
+# Enable User Workload Monitoring on managed clusters via policy
+log "Deploying user workload monitoring policy..."
+oc_create -f 04_ApplicationSet_Setup/05_enable_user_workload_monitoring_policy.yaml
+
 # ── Deploy Testapp-threepilars ApplicationSet ─────────────────────────────────
 log "--- Deploying Testapp-threepilars ApplicationSet ---"
 

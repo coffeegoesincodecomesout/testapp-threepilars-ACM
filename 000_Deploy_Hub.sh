@@ -215,6 +215,6 @@ oc_create -f 04_ApplicationSet_Setup/04_argocd_policy.yaml
 log "=== Hub Cluster Deployment Complete ==="
 log ""
 log "Next steps:"
-log "  1. Import managed clusters using: ./01_Import_Clusters.sh"
-log "  2. Deploy applications using: ./02_Deploy_Applications.sh"
+log "  1. Import managed clusters using: ./001_Import_Clusters.sh"
+log "  2. Deploy applications using: ./002_Deploy_Applications.sh"
 log ""
