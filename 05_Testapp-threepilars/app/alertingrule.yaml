@@ -1,0 +1,22 @@
+apiVersion: loki.grafana.com/v1
+kind: AlertingRule
+metadata:
+  name: testapp-threepilars-logging-alert
+  namespace: testapp-threepilars-app
+  labels:
+    openshift.io/log-alerting: 'true'
+spec:
+  groups:
+    - interval: 1m
+      name: testapp-threepilars-logging-alert
+      rules:
+        - alert: TestappLogActivity
+          annotations:
+            description: Testapp threepilars application log activity detected
+            summary: Testapp threepilars is generating info-level logs
+          expr: >
+            sum(rate({kubernetes_namespace_name="testapp-threepilars-app", kubernetes_pod_name=~"testapp-threepilars.*"} |= "info"[1m])) > 0.01
+          for: 1m
+          labels:
+            severity: warning
+  tenantID: application

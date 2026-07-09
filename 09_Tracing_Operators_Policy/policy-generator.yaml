@@ -1,0 +1,21 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: install-tracing-operators
+policyDefaults:
+  namespace: policies
+  remediationAction: enforce
+  placement:
+    labelSelector:
+      matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+            - "OpenShift"
+policies:
+  - name: install-opentelemetry-operator
+    manifests:
+      - path: manifests/opentelemetry-operator.yaml
+  - name: install-tempo-operator
+    manifests:
+      - path: manifests/tempo-operator.yaml

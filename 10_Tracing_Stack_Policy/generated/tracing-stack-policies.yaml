@@ -1,0 +1,558 @@
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-create-tempo-bucket-secret
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-create-tracing-namespaces
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-deploy-otel-collector
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-deploy-tempo-bucket
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-deploy-tempo-stack
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-create-tempo-bucket-secret
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-create-tempo-bucket-secret
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: create-tempo-bucket-secret
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-create-tracing-namespaces
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-create-tracing-namespaces
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: create-tracing-namespaces
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-deploy-otel-collector
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-deploy-otel-collector
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: deploy-otel-collector
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-deploy-tempo-bucket
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-deploy-tempo-bucket
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: deploy-tempo-bucket
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-deploy-tempo-stack
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-deploy-tempo-stack
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: deploy-tempo-stack
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: create-tempo-bucket-secret
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: deploy-tempo-bucket
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: create-tempo-bucket-secret
+      spec:
+        object-templates-raw: |
+          {{- $cm := (lookup "v1" "ConfigMap" "openshift-tempo" "tempo-bucket-odf") }}
+          {{- $secret := (lookup "v1" "Secret" "openshift-tempo" "tempo-bucket-odf") }}
+          {{- if and $cm $secret }}
+          - complianceType: musthave
+            objectDefinition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: tempostack-dev-odf
+                namespace: openshift-tempo
+              type: Opaque
+              stringData:
+                access_key_id: {{ index $secret.data "AWS_ACCESS_KEY_ID" | base64dec }}
+                access_key_secret: {{ index $secret.data "AWS_SECRET_ACCESS_KEY" | base64dec }}
+                bucket: {{ $cm.data.BUCKET_NAME }}
+                endpoint: https://{{ $cm.data.BUCKET_HOST }}:{{ $cm.data.BUCKET_PORT }}
+          {{- end }}
+        remediationAction: enforce
+        severity: medium
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: create-tracing-namespaces
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: install-opentelemetry-operator
+    namespace: policies
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: install-tempo-operator
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: create-tracing-namespaces
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: opentelemetry
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: openshift-tempo
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: deploy-otel-collector
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: deploy-tempo-stack
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: deploy-otel-collector
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: otel-collector-sidecar
+              namespace: opentelemetry
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: opentelemetry.io/v1alpha1
+            kind: OpenTelemetryCollector
+            metadata:
+              name: otel
+              namespace: opentelemetry
+            spec:
+              config: |
+                extensions:
+                  bearertokenauth:
+                    filename: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+                receivers:
+                  otlp/grpc:
+                    protocols:
+                      grpc:
+                  otlp/http:
+                    protocols:
+                      http:
+                processors:
+                  batch:
+                  memory_limiter:
+                    check_interval: 1s
+                    limit_percentage: 50
+                    spike_limit_percentage: 30
+                  resourcedetection:
+                    detectors: [openshift]
+                    timeout: 2s
+                exporters:
+                  otlp:
+                    endpoint: tempo-simplest-gateway.openshift-tempo.svc.cluster.local:8090
+                    tls:
+                      insecure: false
+                      ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+                    auth:
+                      authenticator: bearertokenauth
+                    headers:
+                      X-Scope-OrgID: "dev"
+                  otlphttp:
+                    endpoint: https://tempo-simplest-gateway.openshift-tempo.svc.cluster.local:8080/api/traces/v1/dev
+                    tls:
+                      insecure: false
+                      ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+                    auth:
+                      authenticator: bearertokenauth
+                    headers:
+                      X-Scope-OrgID: "dev"
+                  debug:
+                    verbosity: detailed
+                service:
+                  telemetry:
+                    logs:
+                      level: "DEBUG"
+                      development: true
+                      encoding: "json"
+                  extensions: [bearertokenauth]
+                  pipelines:
+                    traces/grpc:
+                      receivers: [otlp/grpc]
+                      exporters: [otlp]
+                    traces/http:
+                      receivers: [otlp/http]
+                      exporters: [otlphttp]
+              managementState: managed
+              mode: deployment
+              observability:
+                metrics:
+                  enableMetrics: true
+              serviceAccount: otel-collector-sidecar
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tempostack-traces-reader
+            rules:
+            - apiGroups:
+              - tempo.grafana.com
+              resourceNames:
+              - traces
+              resources:
+              - dev
+              - prod
+              verbs:
+              - get
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: tempostack-traces-write
+            rules:
+            - apiGroups:
+              - tempo.grafana.com
+              resourceNames:
+              - traces
+              resources:
+              - dev
+              verbs:
+              - create
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: tempostack-traces
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: tempostack-traces-write
+            subjects:
+            - kind: ServiceAccount
+              name: otel-collector-sidecar
+              namespace: opentelemetry
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: deploy-tempo-bucket
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: create-tracing-namespaces
+    namespace: policies
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: install-noobaa
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: deploy-tempo-bucket
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: objectbucket.io/v1alpha1
+            kind: ObjectBucketClaim
+            metadata:
+              name: tempo-bucket-odf
+              namespace: openshift-tempo
+            spec:
+              generateBucketName: tempo-bucket-odf
+              storageClassName: openshift-storage.noobaa.io
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: deploy-tempo-stack
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: create-tempo-bucket-secret
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: deploy-tempo-stack
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              annotations:
+                service.beta.openshift.io/inject-cabundle: "true"
+              name: tempo-odf-ca
+              namespace: openshift-tempo
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: tempo.grafana.com/v1alpha1
+            kind: TempoStack
+            metadata:
+              name: simplest
+              namespace: openshift-tempo
+            spec:
+              limits:
+                perTenant:
+                  dev:
+                    ingestion:
+                      ingestionBurstSizeBytes: 1000000
+                    query:
+                      maxSearchDuration: 1h
+              observability:
+                metrics:
+                  createPrometheusRules: true
+                  createServiceMonitors: true
+              resources:
+                total:
+                  limits:
+                    cpu: 2000m
+                    memory: 3Gi
+              retention:
+                global:
+                  traces: 20h
+                perTenant:
+                  dev:
+                    traces: 10h
+              storage:
+                secret:
+                  name: tempostack-dev-odf
+                  type: s3
+                tls:
+                  caName: tempo-odf-ca
+                  enabled: true
+              storageSize: 1Gi
+              template:
+                gateway:
+                  enabled: true
+                queryFrontend:
+                  jaegerQuery:
+                    enabled: true
+              tenants:
+                authentication:
+                - tenantId: 1610b0c3-c509-4592-a256-a1871353dbfa
+                  tenantName: dev
+                - tenantId: 1610b0c3-c509-4592-a256-a1871353dbfb
+                  tenantName: prod
+                mode: openshift
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: observability.openshift.io/v1alpha1
+            kind: UIPlugin
+            metadata:
+              name: distributed-tracing
+            spec:
+              type: DistributedTracing
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce

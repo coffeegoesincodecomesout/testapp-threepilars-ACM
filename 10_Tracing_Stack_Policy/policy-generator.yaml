@@ -1,0 +1,43 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: deploy-tracing-stack
+policyDefaults:
+  namespace: policies
+  remediationAction: enforce
+  placement:
+    labelSelector:
+      matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+            - "OpenShift"
+policies:
+  - name: create-tracing-namespaces
+    dependencies:
+      - name: install-opentelemetry-operator
+      - name: install-tempo-operator
+    manifests:
+      - path: manifests/01_opentelemetry_namespace.yaml
+      - path: manifests/02_tempo_namespace.yaml
+  - name: deploy-tempo-bucket
+    dependencies:
+      - name: create-tracing-namespaces
+      - name: install-noobaa
+    manifests:
+      - path: manifests/03_tempo_objectclaim.yaml
+  - name: create-tempo-bucket-secret
+    dependencies:
+      - name: deploy-tempo-bucket
+    manifests:
+      - path: manifests/04_tempo_bucket_secret.yaml
+  - name: deploy-tempo-stack
+    dependencies:
+      - name: create-tempo-bucket-secret
+    manifests:
+      - path: manifests/05_tempo_stack.yaml
+  - name: deploy-otel-collector
+    dependencies:
+      - name: deploy-tempo-stack
+    manifests:
+      - path: manifests/06_otel_collector.yaml
