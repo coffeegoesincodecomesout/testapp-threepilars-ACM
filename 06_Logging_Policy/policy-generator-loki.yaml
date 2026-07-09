@@ -1,0 +1,20 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: install-loki-operator
+policyDefaults:
+  namespace: policies
+  remediationAction: enforce
+  placement:
+    labelSelector:
+      matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+            - "OpenShift"
+policies:
+  - name: install-loki-operator
+    dependencies:
+      - name: install-coo-operator
+    manifests:
+      - path: manifests/loki-operator.yaml
