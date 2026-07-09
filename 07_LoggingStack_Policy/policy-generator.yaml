@@ -1,0 +1,38 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: deploy-logging-stack
+policyDefaults:
+  namespace: policies
+  remediationAction: enforce
+  placement:
+    labelSelector:
+      matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+            - "OpenShift"
+policies:
+  - name: create-collector-serviceaccount
+    dependencies:
+      - name: install-logging-operator
+    manifests:
+      - path: manifests/00_collector_serviceaccount.yaml
+      - path: manifests/00_loki_rbac.yaml
+  - name: deploy-loki-bucket
+    dependencies:
+      - name: install-logging-operator
+      - name: install-noobaa
+    manifests:
+      - path: manifests/01_objectclaim.yaml
+  - name: create-loki-bucket-secret
+    dependencies:
+      - name: deploy-loki-bucket
+    manifests:
+      - path: manifests/02_bucket_secret.yaml
+  - name: deploy-logging-stack
+    dependencies:
+      - name: create-loki-bucket-secret
+      - name: create-collector-serviceaccount
+    manifests:
+      - path: manifests/03_loggingstack.yaml

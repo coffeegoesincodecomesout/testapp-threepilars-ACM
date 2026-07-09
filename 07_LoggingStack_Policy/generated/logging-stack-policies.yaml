@@ -1,0 +1,482 @@
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-create-collector-serviceaccount
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-create-loki-bucket-secret
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-deploy-logging-stack
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-deploy-loki-bucket
+  namespace: policies
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: vendor
+          operator: In
+          values:
+          - OpenShift
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-create-collector-serviceaccount
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-create-collector-serviceaccount
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: create-collector-serviceaccount
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-create-loki-bucket-secret
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-create-loki-bucket-secret
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: create-loki-bucket-secret
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-deploy-logging-stack
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-deploy-logging-stack
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: deploy-logging-stack
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-deploy-loki-bucket
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: placement-deploy-loki-bucket
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: deploy-loki-bucket
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: create-collector-serviceaccount
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: install-logging-operator
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: create-collector-serviceaccount
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: collector
+              namespace: openshift-logging
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: collect-application-logs
+            rules:
+            - apiGroups:
+              - ""
+              resources:
+              - pods
+              - namespaces
+              - pods/log
+              verbs:
+              - get
+              - list
+              - watch
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: collect-infrastructure-logs
+            rules:
+            - apiGroups:
+              - ""
+              resources:
+              - pods
+              - namespaces
+              - pods/log
+              verbs:
+              - get
+              - list
+              - watch
+            - apiGroups:
+              - ""
+              resources:
+              - nodes
+              - nodes/proxy
+              verbs:
+              - get
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: collect-application-logs
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: collect-application-logs
+            subjects:
+            - kind: ServiceAccount
+              name: collector
+              namespace: openshift-logging
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: collect-infrastructure-logs
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: collect-infrastructure-logs
+            subjects:
+            - kind: ServiceAccount
+              name: collector
+              namespace: openshift-logging
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: logging-collector-logs-writer
+            rules:
+            - apiGroups:
+              - loki.grafana.com
+              resourceNames:
+              - logs
+              resources:
+              - application
+              - infrastructure
+              - audit
+              verbs:
+              - create
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: logging-collector-logs-writer
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: logging-collector-logs-writer
+            subjects:
+            - kind: ServiceAccount
+              name: collector
+              namespace: openshift-logging
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: create-loki-bucket-secret
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: deploy-loki-bucket
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: create-loki-bucket-secret
+      spec:
+        object-templates-raw: |
+          {{- $cm := (lookup "v1" "ConfigMap" "openshift-logging" "loki-bucket-odf") }}
+          {{- $secret := (lookup "v1" "Secret" "openshift-logging" "loki-bucket-odf") }}
+          {{- if and $cm $secret }}
+          - complianceType: musthave
+            objectDefinition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: logging-loki-odf
+                namespace: openshift-logging
+              type: Opaque
+              stringData:
+                access_key_id: {{ index $secret.data "AWS_ACCESS_KEY_ID" | base64dec }}
+                access_key_secret: {{ index $secret.data "AWS_SECRET_ACCESS_KEY" | base64dec }}
+                bucketnames: {{ $cm.data.BUCKET_NAME }}
+                endpoint: https://{{ $cm.data.BUCKET_HOST }}:{{ $cm.data.BUCKET_PORT }}
+          {{- end }}
+        remediationAction: enforce
+        severity: medium
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: deploy-logging-stack
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: create-loki-bucket-secret
+    namespace: policies
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: create-collector-serviceaccount
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: deploy-logging-stack
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: loki.grafana.com/v1
+            kind: LokiStack
+            metadata:
+              name: logging-loki
+              namespace: openshift-logging
+            spec:
+              managementState: Managed
+              rules:
+                enabled: true
+                namespaceSelector:
+                  matchLabels:
+                    openshift.io/log-alerting: "true"
+                selector:
+                  matchLabels:
+                    openshift.io/log-alerting: "true"
+              size: 1x.demo
+              storage:
+                schemas:
+                - effectiveDate: "2024-03-01"
+                  version: v13
+                secret:
+                  name: logging-loki-odf
+                  type: s3
+                tls:
+                  caName: openshift-service-ca.crt
+              storageClassName: gp3-csi
+              tenants:
+                mode: openshift-logging
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: observability.openshift.io/v1alpha1
+            kind: UIPlugin
+            metadata:
+              name: logging
+            spec:
+              logging:
+                lokiStack:
+                  name: logging-loki
+              type: Logging
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: observability.openshift.io/v1
+            kind: ClusterLogForwarder
+            metadata:
+              annotations:
+                observability.openshift.io/log-level: debug
+              name: instance
+              namespace: openshift-logging
+            spec:
+              filters:
+              - drop:
+                - test:
+                  - field: .message
+                    matches: v1 Endpoints is deprecated.*EndpointSlice
+                  - field: .kubernetes.namespace_name
+                    matches: openshift-(monitoring|user-workload-monitoring)
+                name: drop-endpoints-deprecation
+                type: drop
+              outputs:
+              - lokiStack:
+                  authentication:
+                    token:
+                      from: serviceAccount
+                  target:
+                    name: logging-loki
+                    namespace: openshift-logging
+                name: default-lokistack
+                tls:
+                  ca:
+                    configMapName: openshift-service-ca.crt
+                    key: service-ca.crt
+                type: lokiStack
+              pipelines:
+              - inputRefs:
+                - application
+                - infrastructure
+                name: default-logstore
+                outputRefs:
+                - default-lokistack
+              serviceAccount:
+                name: collector
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/description: ""
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: deploy-loki-bucket
+  namespace: policies
+spec:
+  dependencies:
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: install-logging-operator
+    namespace: policies
+  - apiVersion: policy.open-cluster-management.io/v1
+    compliance: Compliant
+    kind: Policy
+    name: install-noobaa
+    namespace: policies
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: deploy-loki-bucket
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: objectbucket.io/v1alpha1
+            kind: ObjectBucketClaim
+            metadata:
+              name: loki-bucket-odf
+              namespace: openshift-logging
+            spec:
+              generateBucketName: loki-bucket-odf
+              storageClassName: openshift-storage.noobaa.io
+        remediationAction: enforce
+        severity: low
+  remediationAction: enforce
