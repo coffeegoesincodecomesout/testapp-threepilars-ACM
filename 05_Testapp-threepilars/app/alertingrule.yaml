@@ -5,6 +5,7 @@ metadata:
   namespace: testapp-threepilars-app
   labels:
     openshift.io/log-alerting: 'true'
+    openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
 spec:
   groups:
     - interval: 1m
