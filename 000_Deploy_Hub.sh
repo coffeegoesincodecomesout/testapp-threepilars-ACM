@@ -138,6 +138,8 @@ run_script "01_Install_Odf/03_postInstall.sh"   # polls until NooBaa is Ready
 
 # ── Phase 2: Operators ────────────────────────────────────────────────────────
 log "--- Phase 2: Install Operators ---"
+oc_create -f 02_Operators/00_imagedigestmirrorset.yaml
+log "NOTE: ImageDigestMirrorSet triggers a node roll (~10-15 min). Ensure all MCPs are UPDATED before continuing."
 oc_create -f 02_Operators/00_catalogsources_acm50.yaml
 log "Waiting 30s for OLM to discover new catalogs..."
 sleep 30

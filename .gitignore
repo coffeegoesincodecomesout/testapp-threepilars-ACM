@@ -2,3 +2,5 @@ CLAUDE.md
 DEPLOYMENT_GUIDE.md
 DEPLOYMENT_STATUS.md
 deploy-*.log
+multicloud-integrations/
+multicluster-observability-operator/
