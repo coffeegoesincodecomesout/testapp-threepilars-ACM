@@ -1,0 +1,27 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: acm-fbc-catalog
+  namespace: openshift-marketplace
+spec:
+  displayName: Advanced Cluster Management (FBC Pre-GA)
+  image: 'quay.io/redhat-user-workloads/ocp-art-tenant/art-fbc@sha256:31ad04c6ed1022944edec50584728b8d03d2828d170d685f79bbf454c307174e'
+  publisher: Red Hat
+  sourceType: grpc
+  updateStrategy:
+    registryPoll:
+      interval: 10m
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: mce-fbc-catalog
+  namespace: openshift-marketplace
+spec:
+  displayName: Multicluster Engine (FBC Pre-GA)
+  image: 'quay.io/redhat-user-workloads/ocp-art-tenant/art-fbc@sha256:8738712e8b525dd7351d72144d684b81f2f64fed38f4e3480a25b052a183c487'
+  publisher: Red Hat
+  sourceType: grpc
+  updateStrategy:
+    registryPoll:
+      interval: 10m

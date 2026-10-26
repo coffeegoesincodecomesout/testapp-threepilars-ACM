@@ -138,6 +138,9 @@ run_script "01_Install_Odf/03_postInstall.sh"   # polls until NooBaa is Ready
 
 # ── Phase 2: Operators ────────────────────────────────────────────────────────
 log "--- Phase 2: Install Operators ---"
+oc_create -f 02_Operators/00_catalogsources_acm50.yaml
+log "Waiting 30s for OLM to discover new catalogs..."
+sleep 30
 oc_create -f 02_Operators/01_subscription_advanced-cluster-management.yaml
 oc_create -f 02_Operators/02_subscription_gitops-operator.yaml
 wait_for_subscription acm-operator-subscription  open-cluster-management        900
