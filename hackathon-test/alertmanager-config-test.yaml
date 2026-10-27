@@ -1,0 +1,46 @@
+---
+# Updated alertmanager config that routes Watchdog alerts to the webhook receiver.
+#
+# The Watchdog alert fires continuously from spokes — it's the perfect canary:
+# - With correct fanout+dedup: we see ONE POST per group_interval (5m)
+# - Without dedup (broken): we see THREE POSTs near-simultaneously (one per replica)
+#
+# Apply with:
+#   oc apply -f alertmanager-config-test.yaml -n open-cluster-management-observability
+#
+# Watch the webhook logs with:
+#   oc logs -f deploy/webhook-receiver -n alertmanager-fanout-test
+#
+# To restore the original config afterwards:
+#   oc apply -f ../03_Observability/alertmanager-config-original.yaml (or delete this secret)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-config
+  namespace: open-cluster-management-observability
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+    receivers:
+    - name: "null"
+    - name: webhook-fanout-test
+      webhook_configs:
+      - url: "http://webhook-receiver.alertmanager-fanout-test.svc:8080/webhook"
+        send_resolved: true
+    route:
+      group_by:
+      - alertname
+      - managed_cluster
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 3m
+      receiver: "null"
+      routes:
+      - match:
+          alertname: Watchdog
+        receiver: webhook-fanout-test
+        group_wait: 10s
+        group_interval: 2m
+        repeat_interval: 3m

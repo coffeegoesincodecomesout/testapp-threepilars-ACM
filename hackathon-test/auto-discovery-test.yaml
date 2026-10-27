@@ -1,0 +1,32 @@
+---
+# Test for ACM-35687: Auto-Discovery of Observability Configs via placement annotation
+#
+# The annotation observability.open-cluster-management.io/placements references
+# a Placement by "namespace/name". The resourcecreator controller should watch this
+# resource and automatically add it to the CMAO's installStrategy.placements[].configs[].
+#
+# Verify with:
+#   oc get clustermanagementaddon multicluster-observability-addon -o yaml | grep -A 20 "installStrategy:"
+#
+# The global placement for MCOA: open-cluster-management-global-set/global
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: auto-discovery-test-rule
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/placements: "open-cluster-management-global-set/global"
+  labels:
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app.kubernetes.io/component: platform-metrics-collector
+spec:
+  groups:
+  - name: auto-discovery-test
+    rules:
+    - alert: AutoDiscoveryTestAlert
+      expr: vector(1)
+      for: 0m
+      labels:
+        severity: none
+      annotations:
+        summary: "Auto-discovery test alert — can be deleted after verification"
